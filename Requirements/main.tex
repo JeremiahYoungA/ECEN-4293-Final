@@ -1,0 +1,56 @@
+\documentclass[conference]{IEEEtran}
+
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{hyperref}
+\usepackage{enumitem}
+
+\begin{document}
+
+\title{Final Project Proposal: Infinite Hexagonal Tic-Tac-Toe Engine}
+
+\author{\IEEEauthorblockN{Jeremiah Young}
+\IEEEauthorblockA{\textit{Department of Electrical and Computer Engineering} \\
+\textit{Oklahoma State University}\\
+Stillwater, Oklahoma \\
+jeremiah.young@okstate.edu}}
+
+\maketitle
+
+\begin{abstract}
+This paper was typeset using \LaTeX{} and acts as a project proposal for a hexagon tic-tac-toe solver. To address the computational challenges of an infinite board and an unbounded state space, the solver will utilize Monte Carlo Tree Search and a heuristic pruning method that utilizes an ``influence field'' to evaluate an Upper Confidence Bound for Trees.
+\end{abstract}
+
+\section{Project Description}
+This project consists of making a chess-like engine for an unsolved 6 in a row infinite tiling hexagon tic-tac-toe, providing move suggestions, forced wins to some depth, and an evaluation score for the current position. I chose this topic to investigate how numerical methods can resolve unbounded state spaces where deterministic solvers are too computationally complex. To do this, \textbf{Monte Carlo Tree Search} will be used to simulate random board states. To provide a form of heuristic pruning, a field of influence will be calculated with a \textbf{vectorized field equation} ($E = \sum \frac{c}{d^2}$). To avoid this calculation taking infinite time, the engine utilizes a \textbf{piecewise evaluation strategy} where the board is chunked into local coordinate meshes that are dynamically calculated. To round this project out, parallel processing will be implemented with carefully chosen random seeds to ensure the convergence of evaluation scores is accelerated.
+
+\section{Project Goals}
+The primary objective of this project is to create a highly efficient analysis engine for infinite Hexagonal Tic-Tac-Toe. The engine will demonstrate the following capabilities:
+\begin{itemize}
+    \item \textbf{Strategic Move Suggestion:} If the user requests a move recommendation, the program shall output the most statistically favorable coordinate.
+    \item \textbf{Dynamic Position Evaluation:} If the board state changes, the program shall display a real-time numerical advantage score based on the influence field.
+    \item \textbf{Forced Win Detection:} If a winning sequence exists within a reachable depth, the program shall notify the user of a deterministic ``Mate in $N$'' state.
+    \item \textbf{Asynchronous Computation:} If the engine is performing heavy simulations, the program shall maintain a responsive UI, allowing the user to interact with the board without input lag.
+\end{itemize}
+
+\section{Requirements}
+The success of the project will be measured against the following testable specifications:
+\begin{enumerate}
+    \item \textbf{Vectorized Field Efficiency:} The vectorized field calculation must perform at least $20\times$ faster than a standard Python \texttt{for}-loop when evaluated over a $50 \times 50$ grid.
+    \item \textbf{Search Complexity Scaling:} Win-state detection must demonstrate $O(1)$ time complexity relative to the total number of pieces on the board.
+    \item \textbf{Statistical Convergence:} The engine must show that running $N$ parallel simulations reduces the standard error of the evaluation score by a factor approaching $1/\sqrt{N}$.
+    \item \textbf{Algorithmic Accuracy:} When presented with a known geometric trap, the engine must identify the winning move in 100\% of test cases in a time approaching 2 seconds.
+    \item \textbf{Heuristic Pruning Efficiency:} The influence-based pruning mechanism must successfully exclude at least 90\% of legal moves in a $50 \times 50$ evaluation chunk while maintaining a 100\% retention rate for moves that contribute to a detected forced-win sequence.
+\end{enumerate}
+
+\begin{thebibliography}{2}
+
+\bibitem{webgoatguy_intro}
+webgoatguy, ``can tic-tac-toe, with hexagons?,'' \textit{YouTube}, Mar. 5, 2026. [Online]. Available: \url{http://www.youtube.com/watch?v=Ob6QINTMIOA}
+
+\bibitem{webgoatguy_strategy}
+webgoatguy, ``hexagonal tic-tac-toe is ridiculous,'' \textit{YouTube}, Mar. 18, 2026. [Online]. Available: \url{http://www.youtube.com/watch?v=EzLzkcRZurk}
+
+\end{thebibliography}
+
+\end{document}
