@@ -109,7 +109,6 @@ Provides core utility functions and constants for the hex engine.
 - **Sparse Board Representation**: Only occupied positions stored; no finite/bounded grid assumption. Enables infinite hexagonal boards.
 - **Functional Search**: Search does not mutate board state during simulation. Board remains immutable across all operations.
 - **Bounded Evaluation**: Piecewise evaluation strategy prevents unbounded computation on infinite board.
-- **Uncoupled Analysis Layers**: Evaluation and search operate independently with no internal coupling.
 
 ## Architectural Absences
 

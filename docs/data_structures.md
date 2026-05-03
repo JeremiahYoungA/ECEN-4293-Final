@@ -78,11 +78,3 @@ The board stores only occupied positions using a sparse data structure keyed by 
 - Retrieve all pieces: `for coord in occupied: ...`
 - Remove piece: `occupied.discard((a, b, c))`
 
-**Example:**
-```python
-occupied: Set[Tuple[int, int, int]] = set()
-occupied.add((0, 0, 0))        # Place piece at origin
-occupied.add((1, -1, 0))       # Place piece at neighbor
-is_occupied = (0, 0, 0) in occupied
-next_pieces = list(occupied)   # Get all occupied positions
-```
