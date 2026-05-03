@@ -2,14 +2,16 @@
 # cython: boundscheck=False
 # cython: wraparound=False
 # cython: nonecheck=False
+# cython: cdivision=True
 
 from libcpp.unordered_map cimport unordered_map
-from libcpp.vector cimport vector
+from libcpp.pair cimport pair
+import numpy as np
+cimport numpy as cnp
 
 # We pack the (a, b, c) coordinates into a single 64-bit integer 
 # for maximum performance in C++ maps.
 cdef inline long long pack_coord(int a, int b, int c) noexcept:
-    # Assuming coordinates stay within +/- 1,000,000
     return ((<long long>a + 1000000) << 42) | ((<long long>b + 1000000) << 21) | (<long long>c + 1000000)
 
 cdef inline (int, int, int) unpack_coord(long long packed) noexcept:
@@ -31,9 +33,9 @@ cdef class HexBoard:
     
     # Public attributes
     cdef public int turn
-    cdef public object last_move # Keep as object for easy Python access or convert to long long
+    cdef public object last_move 
     
-    def __init__(self, dict pieces_dict=None, int turn=0, object last_move=None, list streaks_data=None):
+    def __init__(self, dict pieces_dict=None, int turn=0, object last_move=None):
         self.turn = turn
         self.last_move = last_move
         
@@ -41,12 +43,6 @@ cdef class HexBoard:
         if pieces_dict:
             for coord, pid in pieces_dict.items():
                 self.pieces[pack_coord(coord[0], coord[1], coord[2])] = pid
-
-        # Populate streaks from list if provided (used during copy)
-        # Otherwise initialized empty by C++
-        if streaks_data:
-            # Logic to restore streaks from copy if needed
-            pass
 
     cpdef int get_current_player(self):
         """Calculates current player: P1, P2, P2, P1, P1..."""
@@ -61,22 +57,36 @@ cdef class HexBoard:
             return self.pieces[p]
         return None
 
-    cpdef list get_pieces(self, int player):
-        """Return list of (a,b,c) tuples for given player."""
-        cdef list coords = []
-        cdef long long packed
-        cdef int pid
-        for packed, pid in self.pieces.items():
-            if pid == player:
-                a, b, c = unpack_coord(packed)
-                coords.append((a, b, c))
+    cpdef cnp.ndarray get_pieces(self, int player_id):
+        """
+        CRITICAL FIX: Returns a dense (N, 3) numpy array directly from C++.
+        Bypasses Python tuples entirely so Numba can consume it instantly.
+        """
+        cdef int count = 0
+        cdef pair[long long, int] item
+        
+        # 1. Count matching pieces to avoid dynamic array resizing
+        for item in self.pieces:
+            if item.second == player_id:
+                count += 1
+                
+        # 2. Allocate exact numpy memory
+        cdef cnp.ndarray[int, ndim=2] coords = np.empty((count, 3), dtype=np.int32)
+        
+        # 3. Fill array directly using bitwise unpacking
+        cdef int i = 0
+        for item in self.pieces:
+            if item.second == player_id:
+                coords[i, 2] = <int>(item.first & 0x1FFFFF) - 1000000
+                coords[i, 1] = <int>((item.first >> 21) & 0x1FFFFF) - 1000000
+                coords[i, 0] = <int>((item.first >> 42) & 0x1FFFFF) - 1000000
+                i += 1
+                
         return coords
 
     cpdef tuple place_piece(self, tuple coord):
         """Returns (new_board, is_win)"""
-        cdef int a = coord[0]
-        cdef int b = coord[1]
-        cdef int c = coord[2]
+        cdef int a = coord[0], b = coord[1], c = coord[2]
         cdef long long p = pack_coord(a, b, c)
         
         if self.pieces.count(p):
@@ -99,11 +109,9 @@ cdef class HexBoard:
         cdef long long n1_p, n2_p, end1_p, end2_p
         
         for axis in range(3):
-            # Neighbor 1
             n1_p = pack_coord(a + C_DIRECTIONS[axis][0], 
                               b + C_DIRECTIONS[axis][1], 
                               c + C_DIRECTIONS[axis][2])
-            # Neighbor 2
             n2_p = pack_coord(a + C_DIRECTIONS[axis+3][0], 
                               b + C_DIRECTIONS[axis+3][1], 
                               c + C_DIRECTIONS[axis+3][2])
@@ -115,11 +123,9 @@ cdef class HexBoard:
             if new_len >= 6:
                 win_detected = True
             
-            # Remove internal endpoints
             if len1 > 0: self._streaks[p_idx][axis].erase(n1_p)
             if len2 > 0: self._streaks[p_idx][axis].erase(n2_p)
             
-            # Set new far endpoints
             end1_p = pack_coord(a + C_DIRECTIONS[axis][0] * len1,
                                 b + C_DIRECTIONS[axis][1] * len1,
                                 c + C_DIRECTIONS[axis][2] * len1)
@@ -136,7 +142,7 @@ cdef class HexBoard:
         cdef HexBoard nb = HexBoard.__new__(HexBoard)
         nb.turn = self.turn
         nb.last_move = self.last_move
-        nb.pieces = self.pieces # C++ unordered_map assignment is a deep copy
+        nb.pieces = self.pieces # C++ unordered_map assignment is a lightning-fast deep copy
         
         cdef int p, ax
         for p in range(2):
@@ -156,7 +162,7 @@ cdef class HexBoard:
         return False
 
     def delete(self):
-        """Explicitly clear C++ structures."""
+        """Explicitly clear C++ structures to prevent memory leaks during MCTS."""
         self.pieces.clear()
         cdef int p, ax
         for p in range(2):
