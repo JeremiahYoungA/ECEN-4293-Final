@@ -6,9 +6,10 @@ from src.hex_engine.board.board_cython import HexBoard
 def run_mutation_benchmark():
     # Setup a game with 100 random moves to simulate a deep MCTS rollout
     moves = [(i, -i, 0) for i in range(100)] 
+
+    ITERATIONS = 30000
+    print(f"--- MCTS Rollout Benchmark ({ITERATIONS} Rollouts of 100 moves) ---")
     
-    print("--- MCTS Rollout Benchmark (1,000 Rollouts of 100 moves) ---")
-    ITERATIONS = 1000
 
     # 1. The Copy Strategy (Functional)
     start_copy = time.perf_counter()

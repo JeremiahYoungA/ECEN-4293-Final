@@ -23,6 +23,8 @@ class HexBoard:
             1: {0: {}, 1: {}, 2: {}}, 
             2: {0: {}, 1: {}, 2: {}}
         }
+        # History for mutable in-place moves (used by do_move/undo_move)
+        self.history = []
 
     def get_current_player(self):
         """
@@ -48,63 +50,123 @@ class HexBoard:
         Places a piece functionally. Returns a NEW HexBoard instance and a boolean 
         indicating if this move resulted in a win.
         """
+        # Keep functional API for callers that expect immutability.
+        new_board = self.copy()
+        is_win = new_board.do_move(coord)
+        return new_board, is_win
+
+    def do_move(self, coord):
+        """Mutate the board in-place and record history for O(1) undo.
+
+        Returns True if the move produced a win.
+        """
         if coord in self.pieces:
             raise ValueError(f"Coordinate {coord} is already occupied.")
 
         player_id = self.get_current_player()
-        new_board = self.copy()
-        
-        new_board.pieces[coord] = player_id
-        new_board.last_move = coord
-        new_board.turn += 1
 
-        # Perform O(1) streak updates and check for win
-        is_win = new_board._update_streaks(coord, player_id)
-        
-        return new_board, is_win
+        # Create compact history record storing neighbor streak lengths
+        rec = {
+            'coord': coord,
+            'player_id': player_id,
+            'has_old_last_move': self.last_move is not None,
+            'old_last_move': self.last_move,
+            'len1': [0, 0, 0],
+            'len2': [0, 0, 0]
+        }
 
-    def _update_streaks(self, coord, player_id):
-        """
-        Updates the streak endpoints and returns True if a 6-in-a-row is formed.
-        Executes in strictly O(1) time complexity.
+        # Place piece
+        self.pieces[coord] = player_id
+        self.last_move = coord
+        self.turn += 1
+
+        win = self._update_streaks(coord, player_id, rec, is_undo=False)
+
+        # Record history for perfect undo
+        self.history.append(rec)
+        return win
+
+    def undo_move(self):
+        """Undo the last in-place move using recorded history."""
+        if not self.history:
+            return
+
+        rec = self.history.pop()
+        coord = rec['coord']
+        player_id = rec['player_id']
+
+        # Remove placed piece and restore meta
+        if coord in self.pieces:
+            del self.pieces[coord]
+        self.turn -= 1
+        if rec['has_old_last_move']:
+            self.last_move = rec['old_last_move']
+        else:
+            self.last_move = None
+
+        # Revert streak endpoints
+        self._update_streaks(coord, player_id, rec, is_undo=True)
+
+    def _update_streaks(self, coord, player_id, rec=None, is_undo=False):
+        """Unified streak updater that supports both do_move and undo_move.
+
+        If `is_undo` is False, `rec` must be a dict to record previous neighbor
+        lengths. When `is_undo` is True, `rec` provides the saved lengths to restore.
+        Returns True if a win was detected when applying the move.
         """
         win_detected = False
-        
-        # There are 6 directions, which form 3 axes.
-        # Axis 0: DIRECTIONS[0] & DIRECTIONS[3]
-        # Axis 1: DIRECTIONS[1] & DIRECTIONS[4]
-        # Axis 2: DIRECTIONS[2] & DIRECTIONS[5]
+
         for axis in range(3):
             dir_vec = DIRECTIONS[axis]
             opp_vec = DIRECTIONS[axis + 3]
-            
-            # Find neighbors along this axis
+
             n1 = (coord[0] + dir_vec[0], coord[1] + dir_vec[1], coord[2] + dir_vec[2])
             n2 = (coord[0] + opp_vec[0], coord[1] + opp_vec[1], coord[2] + opp_vec[2])
-            
-            # Get existing streak lengths connected to these neighbors
-            len1 = self._streaks[player_id][axis].get(n1, 0)
-            len2 = self._streaks[player_id][axis].get(n2, 0)
-            
-            new_len = 1 + len1 + len2
-            
-            if new_len >= 6:
-                win_detected = True
-            
-            # Clean up the old internal endpoints
-            if len1 > 0 and n1 in self._streaks[player_id][axis]:
-                del self._streaks[player_id][axis][n1]
-            if len2 > 0 and n2 in self._streaks[player_id][axis]:
-                del self._streaks[player_id][axis][n2]
-                    
-            # Calculate the new far endpoints of this combined streak
-            end1 = (coord[0] + dir_vec[0] * len1, coord[1] + dir_vec[1] * len1, coord[2] + dir_vec[2] * len1)
-            end2 = (coord[0] + opp_vec[0] * len2, coord[1] + opp_vec[1] * len2, coord[2] + opp_vec[2] * len2)
-            
-            # Store the new total length at the far endpoints
-            self._streaks[player_id][axis][end1] = new_len
-            self._streaks[player_id][axis][end2] = new_len
-        
+
+            if not is_undo:
+                l1 = self._streaks[player_id][axis].get(n1, 0)
+                l2 = self._streaks[player_id][axis].get(n2, 0)
+                # record for potential undo
+                if rec is not None:
+                    rec['len1'][axis] = l1
+                    rec['len2'][axis] = l2
+
+                new_len = 1 + l1 + l2
+                if new_len >= 6:
+                    win_detected = True
+
+                if l1 > 0 and n1 in self._streaks[player_id][axis]:
+                    del self._streaks[player_id][axis][n1]
+                if l2 > 0 and n2 in self._streaks[player_id][axis]:
+                    del self._streaks[player_id][axis][n2]
+
+                end1 = (coord[0] + dir_vec[0] * l1, coord[1] + dir_vec[1] * l1, coord[2] + dir_vec[2] * l1)
+                end2 = (coord[0] + opp_vec[0] * l2, coord[1] + opp_vec[1] * l2, coord[2] + opp_vec[2] * l2)
+
+                self._streaks[player_id][axis][end1] = new_len
+                self._streaks[player_id][axis][end2] = new_len
+            else:
+                # undo: remove endpoints created by the move and restore previous endpoints
+                l1 = rec['len1'][axis]
+                l2 = rec['len2'][axis]
+
+                end1 = (coord[0] + dir_vec[0] * l1, coord[1] + dir_vec[1] * l1, coord[2] + dir_vec[2] * l1)
+                end2 = (coord[0] + opp_vec[0] * l2, coord[1] + opp_vec[1] * l2, coord[2] + opp_vec[2] * l2)
+
+                # Remove the endpoints that the move added (if present)
+                if end1 in self._streaks[player_id][axis]:
+                    del self._streaks[player_id][axis][end1]
+                if end2 in self._streaks[player_id][axis]:
+                    del self._streaks[player_id][axis][end2]
+
+                # Restore previous endpoints and neighbor entries
+                if l1 > 0:
+                    self._streaks[player_id][axis][end1] = l1
+                    self._streaks[player_id][axis][n1] = l1
+                if l2 > 0:
+                    self._streaks[player_id][axis][end2] = l2
+                    self._streaks[player_id][axis][n2] = l2
+
         return win_detected
 
     def get_occupied_coordinates(self):
@@ -122,12 +184,15 @@ class HexBoard:
             for pid, axes in self._streaks.items()
         }
         
-        return HexBoard(
+        nb = HexBoard(
             pieces=self.pieces.copy(),
             turn=self.turn,
             last_move=self.last_move,
             streaks=new_streaks
         )
+        # copy history for functional semantics
+        nb.history = list(self.history)
+        return nb
 
     def check_win(self):
         """
@@ -153,3 +218,4 @@ class HexBoard:
             for axis in self._streaks[player_id]:
                 self._streaks[player_id][axis].clear()
         self._streaks.clear()
+        self.history.clear()

@@ -53,6 +53,7 @@ Manages board state
 - Store piece positions using sparse representation
 - Support O(1) piece ownership queries
 - Check neighbor ownership
+- Provide in-place mutation and rollback
 - Support board copying
 
 #### evaluation/
@@ -107,8 +108,8 @@ Provides core utility functions and constants for the hex engine.
 ## Architectural Invariants
 
 - **Sparse Board Representation**: Only occupied positions stored; no finite/bounded grid assumption. Enables infinite hexagonal boards.
-- **Functional Search**: Search does not mutate board state during simulation. Board remains immutable across all operations.
-- **Bounded Evaluation**: Piecewise evaluation strategy prevents unbounded computation on infinite board.
+- **Bounded Evaluation**: Piecewise evaluation prevents unbounded computations on the infinite board
+- **State Management**: Large operations, like creating parallel MCTS threads, use functional immutability, or simply copying the board. Small operations, like searching with a single MCTS thread, uses in-place mutation for speed.
 
 ## Architectural Absences
 
@@ -144,9 +145,9 @@ The following design choices are **NOT** implemented:
 - **Output**: Search and evaluation results flow back to application as final answers
 - **Dependencies**: All layers depend on utils/ for shared operations
 
-### Immutability Guarantee
+### Immutability Compromise
 
-Both search and evaluation operate functionally: neither modifies board state or persisted game data. All operations are deterministic transformations of immutable inputs.
+The engine will isolate board states for parallized MCTS, and will allow mutation in place for high speed operation. This nicely enables undoing moves.
 
 ## Data Structures
 

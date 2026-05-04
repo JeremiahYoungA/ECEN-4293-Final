@@ -22,6 +22,14 @@ To implement Cython, board.py will be converted to board.pyx. This changes the f
 - **Lightweight Nodes:** MCTS nodes will be C structs with direct C-pointers to child nodes
 - **Explicit Memory Management:** an explicit `delete()` method mapped to memory deallocation to replace garbage collection
 
+### State Mutation & History Stack
+
+While originally planned to have immutability, restricted mutations were found to be ~20-25x faster. Restricted mutations were implemented as follows.
+
+- C++ `std::vector` acts as a LIFO History Stack.
+- `do_move` caches `MoveRecord` to the stack, storing the change to the win-detection streaks
+- `undo_move` pops `MoveRecord` and reconstructs the past state
+
 # Build & Implementation
 
 There are a couple required steps to run things smoothly
