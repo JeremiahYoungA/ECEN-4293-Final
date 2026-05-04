@@ -6,18 +6,18 @@ import numpy
 extensions = [
     # The Board implementation
     Extension(
-        "hex_engine.board",
-        sources=["src/hex_engine/board/board.pyx"],
+        name="src.hex_engine.board.board_cython",
+        sources=["src/hex_engine/board/board_cython.pyx"],
         language="c++",
-        extra_compile_args=["-std=c++11"],
+        extra_compile_args=["-std=c++14"],
         include_dirs=[numpy.get_include()]
     ),
     # Optimized Coordinate Utilities
     Extension(
-        "hex_engine.utils.coordinates",
-        sources=["src/hex_engine/utils/coordinates.pyx"],
+        name="src.hex_engine.utils.coordinates_cython",
+        sources=["src/hex_engine/utils/coordinates_cython.pyx"],
         language="c++",
-        extra_compile_args=["-std=c++11"],
+        extra_compile_args=["-std=c++14"],
         include_dirs=[numpy.get_include()]
     )
 ]

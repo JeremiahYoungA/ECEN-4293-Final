@@ -100,11 +100,11 @@ class Evaluator:
             top_indices = np.argpartition(scores, -top_n)[-top_n:]
         
         top_indices = top_indices[np.argsort(scores[top_indices])[::-1]]
-        moves = [tuple(chunk[i]) for i in top_indices if scores[i] > 0]
+        moves = chunk[top_indices[scores[top_indices] > 0]]
         
         # Fallback for the very first move of the game
-        if not moves:
-            return [(0, 0, 0)]
+        if moves.shape[0] == 0:
+            return np.array([[0, 0, 0]], dtype=np.int32)
             
         return moves
 

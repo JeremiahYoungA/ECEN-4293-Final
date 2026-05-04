@@ -1,0 +1,6 @@
+build/
+
+# Generated Cython artifacts and Python caches
+src/hex_engine/**/*.cpp
+src/hex_engine/**/*.pyd
+src/hex_engine/**/__pycache__/
