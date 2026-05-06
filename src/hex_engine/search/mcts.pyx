@@ -204,13 +204,36 @@ cdef class MCTS:
         return node
 
     cdef double _simulate(self, object board, bint already_won):
-        """Simplified simulation using the evaluator's heuristic score."""
+        """Random simulation within heuristic-guided candidate moves."""
         if already_won:
             # Result is 1.0 if the player who just moved won
             return 1.0
         
-        # Use the heuristic field as a proxy for rollout result to save time
-        # Normalize score between 0 and 1
+        # Get a larger candidate group (2x expansion's top_n=10, so top_n=20)
+        # and randomly play from that group until terminal state
+        cdef int max_sim_depth = 50  # Prevent infinite loops
+        cdef int sim_depth = 0
+        
+        while sim_depth < max_sim_depth and not board.check_win():
+            # Get heuristic-guided candidates for current position
+            candidates = self.evaluator.get_candidate_moves(board, top_n=20)
+            
+            if len(candidates) == 0:
+                # No more candidates available
+                break
+            
+            # Randomly pick one from the candidates
+            import random
+            move = candidates[random.randint(0, len(candidates) - 1)]
+            
+            # Play the move
+            is_win = board.do_move(tuple(move))
+            sim_depth += 1
+            
+            if is_win:
+                return 1.0
+        
+        # If simulation ends without a winner, evaluate final position
         score = self.evaluator.evaluate(board)
         return 1.0 / (1.0 + np.exp(-score / 10.0))
 
