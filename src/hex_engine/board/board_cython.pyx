@@ -34,13 +34,6 @@ cdef int[6][3] C_DIRECTIONS = [
 ]
 
 cdef class HexBoard:
-    cdef unordered_map[long long, int] pieces
-    # FIX: Replacing 2D C-array with 1D C++ Vector to prevent Cython constructor segfaults
-    cdef vector[unordered_map[long long, int]] _streaks
-    cdef vector[MoveRecord] history
-    cdef public int turn
-    cdef public object last_move 
-    
     def __init__(self, dict pieces_dict=None, int turn=0, object last_move=None):
         self.turn = turn
         self.last_move = last_move

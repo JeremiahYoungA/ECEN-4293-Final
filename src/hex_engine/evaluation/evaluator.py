@@ -50,7 +50,7 @@ def _calculate_advantage(w_inf, b_inf):
 @nb.njit(fastmath=True, nogil=True)
 def _calculate_candidate_scores(w_inf, b_inf):
     """Combines fields to find areas of high contention/interest."""
-    return w_inf + b_inf
+    return np.abs(w_inf) + np.abs(b_inf)
 
 class Evaluator:
     def __init__(self, search_radius=15, influence_constant=1.0):
