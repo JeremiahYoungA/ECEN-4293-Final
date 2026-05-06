@@ -17,7 +17,7 @@ class InteractiveHexGame:
         self.board = HexBoard()
         self.evaluator = Evaluator(search_radius=15)
         self.evaluator.warmup()
-        self.mcts = MCTS(evaluator=self.evaluator, exploration_constant=10)
+        self.mcts = MCTS(evaluator=self.evaluator, exploration_constant=30)
         
         # Setup Plot
         self.fig, self.ax = plt.subplots(figsize=(10, 10))
@@ -87,7 +87,7 @@ class InteractiveHexGame:
             self.fig.canvas.flush_events()
             
             start_time = time.perf_counter()
-            best_move = self.mcts.search(self.board, iterations=1500, profile=True)
+            best_move = self.mcts.search(self.board, iterations=150000, profile=True)
             end_time = time.perf_counter()
             
             print(f"AI evaluated tree in {end_time - start_time:.3f}s. Plays: {best_move}")

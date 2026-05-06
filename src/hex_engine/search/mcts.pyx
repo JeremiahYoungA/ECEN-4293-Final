@@ -50,6 +50,7 @@ cdef class MCTS:
     cdef double exploration_constant
     cdef object evaluator
     cdef public dict timing_stats
+    cdef public list move_stats
     
     def __init__(self, evaluator, double exploration_constant=1.414):
         self.evaluator = evaluator
@@ -63,13 +64,14 @@ cdef class MCTS:
             'rollback': 0.0,
             'iterations': 0
         }
+        self.move_stats = []
 
     def search(self, board, int iterations=1000, bint profile=False):
         """
         Executes MCTS iterations and returns the best move.
-        If profile=True, also returns timing statistics.
+        If profile=True, prints timing and move statistics.
         """
-        # Reset timing stats
+        # Reset timing stats and move stats
         self.timing_stats = {
             'total': 0.0,
             'selection': 0.0,
@@ -79,6 +81,7 @@ cdef class MCTS:
             'rollback': 0.0,
             'iterations': iterations
         }
+        self.move_stats = []
         
         cdef int current_p = board.get_current_player()
         cdef Node* root = create_node(0, 0, 0, 0, NULL) # Dummy root
@@ -91,6 +94,9 @@ cdef class MCTS:
             
         end_total = time.perf_counter()
         self.timing_stats['total'] = end_total - start_total
+        
+        # Extract move statistics BEFORE freeing the tree
+        self._extract_root_children_stats(root)
         
         # Select best child of root
         cdef Node* best_child = NULL
@@ -107,6 +113,7 @@ cdef class MCTS:
         
         if profile:
             self.print_profile()
+            self.print_move_statistics()
         
         return best_move
 
@@ -213,6 +220,47 @@ cdef class MCTS:
             node.wins += result
             result = 1.0 - result # Opposing player's perspective
             node = node.parent
+
+    cdef void _extract_root_children_stats(self, Node* root):
+        """Extract visit counts from root's children before tree is freed."""
+        cdef int i
+        for i in range(root.num_children):
+            self.move_stats.append({
+                'move': (root.children[i].a, root.children[i].b, root.children[i].c),
+                'visits': root.children[i].visits,
+                'wins': root.children[i].wins
+            })
+
+    def print_move_statistics(self):
+        """Print node visit counts for all heuristic suggested moves."""
+        if not self.move_stats:
+            print("No moves were evaluated.")
+            return
+        
+        # Sort by visits descending
+        sorted_moves = sorted(self.move_stats, key=lambda x: x['visits'], reverse=True)
+        total_visits = sum(m['visits'] for m in sorted_moves)
+        
+        print("\n" + "="*75)
+        print("MOVE EVALUATION STATISTICS")
+        print("="*75)
+        print(f"Total moves evaluated:    {len(sorted_moves)}")
+        print(f"Total node visits:        {total_visits}")
+        print("-"*75)
+        print(f"{'Rank':<6} {'Move':<15} {'Visits':<12} {'%':<8} {'Wins':<10} {'Win %'}")
+        print("-"*75)
+        
+        for rank, move_stat in enumerate(sorted_moves, 1):
+            move = move_stat['move']
+            visits = move_stat['visits']
+            wins = move_stat['wins']
+            pct = (visits / total_visits * 100) if total_visits > 0 else 0
+            win_pct = (wins / visits * 100) if visits > 0 else 0
+            
+            print(f"{rank:<6} ({move[0]:3d}, {move[1]:3d}, {move[2]:3d})    "
+                  f"{visits:<12d} {pct:6.1f}%  {wins:9.1f}  {win_pct:5.1f}%")
+        
+        print("="*75 + "\n")
 
     def print_profile(self):
         """Print a formatted timing report of MCTS phases."""
