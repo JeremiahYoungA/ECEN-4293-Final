@@ -6,7 +6,7 @@ import time
 # Import your actual engine
 from src.hex_engine.board.board_cython import HexBoard
 from src.hex_engine.evaluation.evaluator import Evaluator
-from src.hex_engine.search.mcts import MCTS
+from src.hex_engine.analysis.analysis import Analyzer
 
 class InteractiveHexGame:
     def __init__(self, radius=4):
@@ -17,7 +17,8 @@ class InteractiveHexGame:
         self.board = HexBoard()
         self.evaluator = Evaluator(search_radius=15)
         self.evaluator.warmup()
-        self.mcts = MCTS(evaluator=self.evaluator, exploration_constant=30)
+        self.analyzer = Analyzer(num_workers=8, search_radius=15)
+        self.analyzer.warmup(verbose=True)
         
         # Setup Plot
         self.fig, self.ax = plt.subplots(figsize=(10, 10))
@@ -82,15 +83,15 @@ class InteractiveHexGame:
         self.ai_thinking = True
         while self.board.get_current_player() == 2 and not self.board.check_win():
             # Force UI to update text before AI freezes the thread
-            plt.title("MCTS is thinking...", fontsize=16, fontweight='bold', color='orange')
+            plt.title("Parallel MCTS is analyzing...", fontsize=16, fontweight='bold', color='orange')
             self.fig.canvas.draw()
             self.fig.canvas.flush_events()
             
             start_time = time.perf_counter()
-            best_move = self.mcts.search(self.board, iterations=150000, profile=True)
+            best_move = self.analyzer.analyze_move(self.board, total_iterations=1000000, exploration_constant=1.414, verbose=True)
             end_time = time.perf_counter()
             
-            print(f"AI evaluated tree in {end_time - start_time:.3f}s. Plays: {best_move}")
+            print(f"Parallel analysis completed in {end_time - start_time:.3f}s. Plays: {best_move}")
             
             if best_move:
                 self.board.do_move(best_move)
@@ -199,14 +200,21 @@ class InteractiveHexGame:
             if self.board.get_current_player() == 1:
                 plt.title("Your Turn (Click a Hexagon)", fontsize=16, fontweight='bold')
             else:
-                plt.title("MCTS is thinking...", fontsize=16, fontweight='bold', color='orange')
+                plt.title("Parallel MCTS is analyzing...", fontsize=16, fontweight='bold', color='orange')
             
         self.ax.autoscale_view()
         self.ax.axis('off')
         plt.tight_layout()
         self.fig.canvas.draw()
 
+    def cleanup(self):
+        """Shuts down background worker processes."""
+        self.analyzer.shutdown()
+
 if __name__ == "__main__":
-    print("Starting Interactive Hex Match vs. MCTS Engine...")
+    print("Starting Interactive Hex Match vs. Parallel MCTS Engine...")
     game = InteractiveHexGame(radius=5)
-    plt.show()
+    try:
+        plt.show()
+    finally:
+        game.cleanup()
