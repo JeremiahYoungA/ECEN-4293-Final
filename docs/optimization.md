@@ -9,6 +9,7 @@ The sparse array will be converted to a dense numpy array for array-based mathem
 ### Implementation of Numba
 - **Decorator Utilization:** `@njit(fastmath=True, nogil=True)` will be applied to cause influence calculation loops to compile into native machine code and bypass the typical interpeter.
 - **Objects:** Coordinates will be in raw numpy arrays to ensure Numba is compatible with the numerical data.
+- **Zero-Allocation Math:** Profiling the time spent by MCTS revealed overhead caused by garbage-collection of intermediate NumPy arrays inside `evaluator.py`, such as `np.zeros`. Several steps (loops) were pushed into a single loop. Instead of storing individual influence fields, a running sum is kept, avoiding storage of the extra hex values. This eliminated the intermediate arrays.
 
 ## Search
 
@@ -20,7 +21,7 @@ To implement Cython, board.py will be converted to board.pyx. This changes the f
 - **cdef Classes:** `HexBoard` will be redefined as a `cdef class` to remove object overhead.
 - **C++ Memory Structures:** Python dictionaries will be replaced with C++ `std::unordered_map`
 - **Lightweight Nodes:** MCTS nodes will be C structs with direct C-pointers to child nodes
-- **Explicit Memory Management:** an explicit `delete()` method mapped to memory deallocation to replace garbage collection
+- **Explicit Memory Management:** Manual memory management utilizing `malloc()` and similar functions allow bypassing Python's garbage collector.
 
 ### State Mutation & History Stack
 
@@ -29,6 +30,13 @@ While originally planned to have immutability, restricted mutations were found t
 - C++ `std::vector` acts as a LIFO History Stack.
 - `do_move` caches `MoveRecord` to the stack, storing the change to the win-detection streaks
 - `undo_move` pops `MoveRecord` and reconstructs the past state
+
+## Parallelization
+
+To accelerate the simulation, parallelization across multiple CPU cores is used.
+
+- **Root Node Division:** The root has some number of nodes chosen by the heuristic. These nodes are divided between the arrays to counter overlap of simulated trees.
+- **Scaling Efficiency:** Effeciency can be seen with benchmark_parallel.py
 
 # Build & Implementation
 

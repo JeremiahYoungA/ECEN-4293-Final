@@ -1,0 +1,19 @@
+# Hex Engine - Python Dependencies
+# Core Scientific Computing
+numpy>=1.21.0
+numba>=0.55.0
+
+# Cython Compilation
+Cython>=0.29.0
+
+# Visualization
+matplotlib>=3.4.0
+
+# Build Tools
+setuptools>=50.0
+
+# NOTE: C++ Build Requirement
+# Visual Studio C++14 or later is required to compile Cython extensions.
+# On Windows: Install "Desktop development with C++" workload in Visual Studio
+# On Linux: gcc/g++ with C++14 support (usually available via build-essential)
+# On macOS: Xcode Command Line Tools (xcode-select --install)

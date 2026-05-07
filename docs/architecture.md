@@ -89,7 +89,7 @@ Implements Monte Carlo Tree Search (MCTS) algorithm for optimal move discovery a
 
 **Outputs**
 - Move suggestion
-- Forced win (Mate in N)
+- Forced win (Mate in N) [NOT ACHIEVED]
 
 **Algorithm Overview:**
 Uses 4-phase MCTS: Selection (UCB), Expansion, Simulation (random playouts), and Backpropagation. Periodically queries evaluation module for heuristic scores to prune low-value branches and accelerate convergence.

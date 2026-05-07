@@ -1,29 +1,24 @@
-# Claude AI assisted with: Matplotlib hex rendering, event handling, heatmap visualization, Analyzer integration
 import matplotlib.pyplot as plt
 from matplotlib.patches import RegularPolygon
 import numpy as np
-import time
 
-# Import your actual engine
+# Import your engine components
 from src.hex_engine.board.board_cython import HexBoard
 from src.hex_engine.evaluation.evaluator import Evaluator
-from src.hex_engine.analysis.analysis import Analyzer
 
-class InteractiveHexGame:
+class InteractiveHexGame2P:
     def __init__(self, radius=4):
         self.radius = radius
-        self.ai_thinking = False
         
-        print("Initializing Engine...")
+        print("Initializing 2-Player Board...")
         self.board = HexBoard()
+        # Keep the evaluator just to draw the cool influence heatmap
         self.evaluator = Evaluator(search_radius=15)
         self.evaluator.warmup()
-        self.analyzer = Analyzer(num_workers=8, search_radius=15)
-        self.analyzer.warmup(verbose=True)
         
         # Setup Plot
         self.fig, self.ax = plt.subplots(figsize=(10, 10))
-        self.fig.canvas.manager.set_window_title('Hex Engine Match')
+        self.fig.canvas.manager.set_window_title('Hex Engine Match (Local 2-Player)')
         self.fig.canvas.mpl_connect('button_press_event', self.on_click)
         
         self.draw_board()
@@ -49,11 +44,11 @@ class InteractiveHexGame:
         return (int(rx), int(ry), int(rz))
 
     def on_click(self, event):
-        """Handles human interaction and triggers AI response."""
+        """Handles human interaction for both players."""
         if event.inaxes != self.ax: return
         
-        # Ignore clicks if game is over, AI is calculating, or it's not the human's (Player 1) turn
-        if self.board.check_win() or self.ai_thinking or self.board.get_current_player() != 1: 
+        # Ignore clicks if game is over
+        if self.board.check_win(): 
             return 
         
         # 1. Map click to board coordinate
@@ -69,45 +64,19 @@ class InteractiveHexGame:
             print(f"Space {coord} is already occupied!")
             return
             
-        # Execute Human Move
-        print(f"\nPlayer played: {coord}")
+        # Execute Move
+        current_player = self.board.get_current_player()
+        player_name = "Black" if current_player == 1 else "White"
+        
+        print(f"\nPlayer {current_player} ({player_name}) played: {coord}")
         self.board.do_move(coord)
         self.draw_board()
         
         if self.board.check_win():
-            plt.title("Game Over: You Win!", fontsize=18, fontweight='bold', color='green')
+            win_color = 'black' if current_player == 1 else 'gray'
+            plt.title(f"Game Over: Player {current_player} ({player_name}) Wins!", fontsize=18, fontweight='bold', color=win_color)
             self.fig.canvas.draw()
             return
-
-        # 2. Trigger AI Turn(s)
-        # Using a while loop so it perfectly respects Connect6 rules (AI plays twice after turn 1)
-        self.ai_thinking = True
-        while self.board.get_current_player() == 2 and not self.board.check_win():
-            # Force UI to update text before AI freezes the thread
-            plt.title("Parallel MCTS is analyzing...", fontsize=16, fontweight='bold', color='orange')
-            self.fig.canvas.draw()
-            self.fig.canvas.flush_events()
-            
-            start_time = time.perf_counter()
-            best_move = self.analyzer.analyze_move(self.board, total_iterations=100000, exploration_constant=1.414, verbose=True)
-            end_time = time.perf_counter()
-            
-            print(f"Parallel analysis completed in {end_time - start_time:.3f}s. Plays: {best_move}")
-            
-            if best_move:
-                self.board.do_move(best_move)
-            else:
-                break # Failsafe if no moves are generated
-                
-            self.draw_board()
-            
-            if self.board.check_win():
-                plt.title("Game Over: Engine Wins!", fontsize=18, fontweight='bold', color='red')
-                self.fig.canvas.draw()
-                self.ai_thinking = False
-                return
-                
-        self.ai_thinking = False
 
     def draw_board(self):
         """Renders the board state."""
@@ -119,13 +88,10 @@ class InteractiveHexGame:
 
         # Fetch the influence map from the evaluator
         w_inf, b_inf, chunk = self.evaluator.get_influence(self.board)
-        # White is positive, Black is negative (differential field)
+        # White is positive, Black is negative
         inf_map = {tuple(chunk[i]): w_inf[i] - b_inf[i] for i in range(len(chunk))}
-        # Absolute fluence field: total contention/interest
-        abs_fluence_map = {tuple(chunk[i]): np.abs(w_inf[i]) + np.abs(b_inf[i]) for i in range(len(chunk))}
         
         # Fetch top candidate moves to highlight
-        # Explicitly requesting only the top 5 moves for visualization
         candidates = self.evaluator.get_candidate_moves(self.board, top_n=30)
         # Convert candidates to tuples for proper comparison
         candidate_tuples = set(tuple(move) for move in candidates)
@@ -140,7 +106,6 @@ class InteractiveHexGame:
                     
                     coord = (a, b, c)
                     inf_val = inf_map.get(coord, 0.0)
-                    abs_fluence = abs_fluence_map.get(coord, 0.0)
                     
                     if coord in p1_pieces:
                         hex_color = '#222222'
@@ -166,8 +131,7 @@ class InteractiveHexGame:
                             text_color = '#cc0000'
                             
                         # Format the influence to 2 decimal places with a +/- sign
-                        # Also show absolute fluence field (total contention)
-                        label_text = f"{a},{b},{c}\n{inf_val:+.2f}\n|Φ|:{abs_fluence:.2f}"
+                        label_text = f"{a},{b},{c}\n{inf_val:+.2f}"
                         
                     # Highlight candidate moves with a thick gold outline
                     is_candidate = coord in candidate_tuples
@@ -179,8 +143,6 @@ class InteractiveHexGame:
                         current_linewidth = 1.5
                         zorder = 1
                         
-                    # Fix: orientation=np.pi/3 rotates the hexes to have flat tops
-                    # Fix: radius=0.98 closes the gaps while leaving a tiny border
                     hex_patch = RegularPolygon(
                         (x, y), 
                         numVertices=6, 
@@ -198,24 +160,17 @@ class InteractiveHexGame:
                                  size=7, color=text_color, weight='bold', zorder=zorder+1)
 
         if not self.board.check_win():
-            if self.board.get_current_player() == 1:
-                plt.title("Your Turn (Click a Hexagon)", fontsize=16, fontweight='bold')
-            else:
-                plt.title("Parallel MCTS is analyzing...", fontsize=16, fontweight='bold', color='orange')
+            current_player = self.board.get_current_player()
+            player_name = "Black" if current_player == 1 else "White"
+            color = 'black' if current_player == 1 else 'gray'
+            plt.title(f"Player {current_player}'s Turn ({player_name}) - Click a Hexagon", fontsize=16, fontweight='bold', color=color)
             
         self.ax.autoscale_view()
         self.ax.axis('off')
         plt.tight_layout()
         self.fig.canvas.draw()
 
-    def cleanup(self):
-        """Shuts down background worker processes."""
-        self.analyzer.shutdown()
-
 if __name__ == "__main__":
-    print("Starting Interactive Hex Match vs. Parallel MCTS Engine...")
-    game = InteractiveHexGame(radius=5)
-    try:
-        plt.show()
-    finally:
-        game.cleanup()
+    print("Starting Interactive Hex Match (2-Player Local)...")
+    game = InteractiveHexGame2P(radius=5)
+    plt.show()
