@@ -1,3 +1,4 @@
+# Claude AI assisted with: creating a no AI version based on visualize_board.py
 import matplotlib.pyplot as plt
 from matplotlib.patches import RegularPolygon
 import numpy as np
