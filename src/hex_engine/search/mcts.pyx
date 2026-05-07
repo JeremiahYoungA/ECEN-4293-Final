@@ -1,3 +1,4 @@
+# Claude AI assisted with: Cython syntax, performance optimization
 # cython: language_level=3
 # cython: boundscheck=False
 # cython: wraparound=False

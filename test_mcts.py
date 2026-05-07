@@ -1,3 +1,4 @@
+# Claude AI assisted with: Test design for tree building, UCB1 selection, simulation, backpropagation
 import time
 from src.hex_engine.board.board_cython import HexBoard
 from src.hex_engine.evaluation.evaluator import Evaluator

@@ -1,3 +1,4 @@
+# Claude AI assisted with: Cython build configuration and platform-specific compilation flags
 from setuptools import setup, Extension
 from Cython.Build import cythonize
 import numpy

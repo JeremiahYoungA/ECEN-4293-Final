@@ -1,3 +1,4 @@
+# Claude AI assisted with: Sparse dictionary implementation and game turn logic
 from src.hex_engine.utils.coordinates import DIRECTIONS
 
 class HexBoard:

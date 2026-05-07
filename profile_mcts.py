@@ -1,3 +1,4 @@
+# Claude AI assisted with: Profiling metrics
 """
 Standalone profiling script for MCTS to analyze time breakdown across phases.
 """

@@ -1,3 +1,4 @@
+# Claude AI assisted with: Benchmark design, performance comparison infrastructure
 import time
 import numpy as np
 from src.hex_engine.evaluation.evaluator import Evaluator, _calculate_influence_fields

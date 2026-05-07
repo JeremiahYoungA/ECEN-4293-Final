@@ -1,3 +1,4 @@
+# Claude AI assisted with: Matplotlib hex rendering, event handling, heatmap visualization, Analyzer integration
 import matplotlib.pyplot as plt
 from matplotlib.patches import RegularPolygon
 import numpy as np

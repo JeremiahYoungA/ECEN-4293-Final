@@ -1,3 +1,4 @@
+# Claude AI assisted with: Root parallelization architecture, worker orchestration, statistics merging
 import concurrent.futures
 import multiprocessing
 import time

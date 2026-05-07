@@ -1,3 +1,4 @@
+# Claude AI assisted with: Test case design
 """
 Test suite for Evaluator.get_candidate_moves() to verify it returns at most top_n moves.
 """

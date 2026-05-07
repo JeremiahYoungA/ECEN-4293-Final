@@ -1,3 +1,4 @@
+# Claude AI assisted with: Numba JIT configuration, influence field vectorization
 import numpy as np
 import numba as nb
 

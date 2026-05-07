@@ -1,3 +1,4 @@
+# Claude AI assisted with: Parallel scaling benchmark design
 import time
 import multiprocessing
 from src.hex_engine.board.board_cython import HexBoard

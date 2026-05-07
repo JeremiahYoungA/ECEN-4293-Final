@@ -1,3 +1,4 @@
+# Claude AI assisted with: Integration test design and board logic validation
 from src.hex_engine.board.board_cython import HexBoard
 from src.hex_engine.evaluation.evaluator import Evaluator
 
