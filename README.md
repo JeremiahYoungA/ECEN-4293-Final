@@ -1,192 +1,48 @@
 # Hex Game Engine
 
-A high-performance Monte Carlo Tree Search (MCTS) engine for the hexagonal board game Hex, implemented in Python with Cython and Numba optimizations for speed-critical components.
+A high-performance Monte Carlo Tree Search (MCTS) engine for the hexagonal board game Hex, with Cython and Numba optimizations.
 
-## Features
+## ⚠️ Status
 
-- **Strategic Move Suggestion** — Recommends optimal moves using MCTS with UCB-based selection
-- **Position Evaluation** — Computes real-time numerical advantage scores using influence field heuristics
-- **6-in-a-Row Detection** — Identifies forced win sequences ("Mate in N") with O(1) complexity per evaluation
-- **Infinite Board Support** — Sparse representation handles unbounded hexagonal grids without storing the entire board
-- **Parallel Simulations** — Multi-threaded MCTS execution for improved convergence and statistical accuracy
-- **Interactive Visualization** — Play against the AI using a visual board interface
-
-## Installation
-
-### Prerequisites
-
-- Python 3.10+
-- Visual Studio C++14 (required for Cython compilation on Windows)
-
-### Setup
-
-1. **Install dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-2. **Build Cython extensions:**
-   ```bash
-   python setup.py build_ext --inplace
-   ```
+**Note:** The heuristics are not yet tuned, and the AI does not play well. This project is a performance-focused implementation demonstrating MCTS architecture and optimization techniques rather than strong gameplay.
 
 ## Quick Start
 
-### Play Against the AI
+**Setup:**
+```bash
+pip install -r requirements.txt
+python setup.py build_ext --inplace
+```
 
+**Play against the AI:**
 ```bash
 python visualize_board.py
 ```
 
-This launches an interactive hex board where you can play against the MCTS engine.
+## Documentation
 
-### Analyze a Position
-
-```python
-from src.hex_engine.analysis import analyze_position
-from src.hex_engine.board import HexBoard
-
-# Create a board and analyze
-board = HexBoard()
-board.place_piece(0, 0, 0, player=1)  # Place piece using cube coordinates
-
-result = analyze_position(board, current_player=2)
-print(f"Best move: {result.best_move}")
-print(f"Advantage score: {result.advantage_score}")
-print(f"Mate in: {result.mate_in_n}")
-```
+- [Architecture](docs/architecture.md) — System design and module layout
+- [Data Structures](docs/data_structures.md) — Cube coordinate system
+- [Goals](docs/goals.md) — Performance targets
+- [Optimization](docs/optimization.md) — Cython and Numba implementation
+- [Tutorial](docs/tutorial.md) — Detailed setup
 
 ## Project Structure
 
 ```
 src/hex_engine/
-├── analysis/          # Orchestrates search, evaluation, and win detection
-├── board/             # Board state management (sparse representation)
-├── evaluation/        # Influence field heuristic scoring
-├── search/            # Monte Carlo Tree Search implementation
-├── utils/             # Coordinate operations and game constants
-└── ui/                # Visualization components
+├── analysis/       # Analysis orchestration
+├── board/          # Board state management
+├── evaluation/     # Heuristic scoring
+├── search/         # MCTS implementation
+├── utils/          # Utilities and constants
+└── ui/             # Visualization
 
-docs/
-├── architecture.md    # System design and data flow
-├── data_structures.md # Cube coordinate system specification
-├── goals.md          # Performance targets and constraints
-├── optimization.md   # Cython and Numba implementation details
-└── tutorial.md       # Detailed setup instructions
-
-tests/                # Unit tests for all modules
-benchmarks/           # Performance benchmarks
+tests/              # Unit tests
+benchmarks/         # Performance benchmarks
 ```
-
-## Architecture Overview
-
-The engine follows a layered architecture:
-
-1. **Application Layer** (`analysis/`) — Entry point for all analysis operations
-2. **Core Logic Layer** (`board/`, `search/`, `evaluation/`) — Game logic and MCTS
-3. **Primitives Layer** (`utils/`) — Utility functions and coordinate operations
-
-### Key Design Decisions
-
-- **Sparse Board Representation** — Only occupied positions stored; enables infinite grids
-- **Cube Coordinates** — Three-axis hex positioning system with O(1) neighbor queries
-- **In-Place Mutation with Undo** — Fast move execution with O(1) rollback via history stack
-- **Heuristic Pruning** — Periodic evaluation guidance reduces tree size by 90%+
-- **Cython + Numba** — Critical paths compiled to native code for 20-100× speedups
-
-See [architecture.md](docs/architecture.md) for detailed information.
-
-## Performance Targets
-
-| Target | Specification |
-|--------|---------------|
-| Win Detection | O(1) complexity regardless of board size |
-| Winning Move Detection | ~2 seconds on standard hardware |
-| Move Pruning Efficiency | ≥90% exclusion of non-critical moves |
-| Parallel Scaling | ~1/√N reduction in error with N threads |
-| Vectorization Speedup | ≥20× over Python for-loops |
 
 ## Development
 
-### Running Tests
-
-```bash
-pytest tests/
-```
-
-### Benchmarking
-
-```bash
-# Parallel simulation efficiency
-python benchmark_parallel.py
-
-# MCTS performance
-python profile_mcts.py
-
-# Evaluation speed
-python benchmark_mutability.py
-```
-
-### Building Documentation
-
-Comprehensive documentation is available in the `docs/` directory:
-
-- [Architecture](docs/architecture.md) — System design and module responsibilities
-- [Data Structures](docs/data_structures.md) — Cube coordinate system details
-- [API Reference](docs/api_reference.md) — Full API documentation
-- [Goals](docs/goals.md) — Performance targets and design constraints
-- [Optimization](docs/optimization.md) — Cython and Numba implementation guide
-
-## Technical Highlights
-
-### Cube Coordinate System
-
-Hexagonal positions use three-axis coordinates (a, b, c) where a + b + c = 0:
-
-```
-        +a
-        /\
-       /  \
-      /    \
-  +c /______\ +b
-```
-
-This enables O(1) neighbor queries and efficient distance calculations. See [data_structures.md](docs/data_structures.md) for full details.
-
-### MCTS Algorithm
-
-The engine uses a 4-phase MCTS with UCB-based selection:
-
-1. **Selection** — Traverse tree using Upper Confidence Bound
-2. **Expansion** — Add new nodes with heuristic prioritization
-3. **Simulation** — Execute random playouts with evaluation guidance
-4. **Backpropagation** — Update statistics up the tree
-
-Periodic evaluation module queries prune low-value branches during search.
-
-### Optimization Strategy
-
-- **Numba JIT** — Compiles influence field calculations to machine code
-- **Cython** — Board representation and MCTS nodes as native C structures
-- **History Stack** — Fast undo via C++ `std::vector` instead of full board copies
-- **Zero-Copy Math** — Running sums avoid intermediate array allocations
-
-## Requirements
-
-See [requirements.txt](requirements.txt) for complete dependency list. Key packages:
-
-- `numpy` — Numerical computations
-- `cython` — C compilation for performance
-- `numba` — JIT compilation for numerical loops
-- `pygame` — Visualization (optional)
-
-## License
-
-See LICENSE file for details.
-
-## References
-
-- Architecture inspired by matklad's post on codebase design
-- Hex game rules: https://en.wikipedia.org/wiki/Hex_(board_game)
-- MCTS overview: https://en.wikipedia.org/wiki/Monte_Carlo_tree_search
-- Cube coordinates: https://www.redblobgames.com/grids/hexagons/
+- **Tests:** `pytest tests/`
+- **Benchmarks:** `python benchmark_parallel.py`, `python profile_mcts.py`
